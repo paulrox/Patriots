@@ -30,6 +30,7 @@ typedef struct _task_des {
 	struct timespec at;		/* Task last activation time */
 	struct timespec dl;		/* Task absolute deadline */
 	uint32_t dmiss;			/* Task deadline misses */
+	int32_t	index;			/* custom task argument */
 } task_des;
 
 extern task_des task_set[TASK_NUM];

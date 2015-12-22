@@ -22,7 +22,8 @@ int32_t line_color, txt_color, head_color, t_color, p_color,
 	tc_color, tp_color;
 
 BITMAP *city, *radar, *bkg, *box_buffer, *ss_buffer, *ts_buffer,
-	*target, *radar_buffer, *patriot;
+	*radar_buffer, *patriot;
+BITMAP	*targets[MAX_TARGETS];
 
 /*----------------------------------------------------------------------------+
  *	initGraphics()															  |
@@ -33,6 +34,8 @@ BITMAP *city, *radar, *bkg, *box_buffer, *ss_buffer, *ts_buffer,
 
 void initGraphics()
 {
+int32_t i;
+char t_path[13];
 
 	/* initialize allegro related stuff */
 	allegro_init();
@@ -58,7 +61,11 @@ void initGraphics()
 	radar_buffer = create_bitmap(RAD_RANGE_X, RAD_RANGE_Y);
 
 	/* load images for the target and the patriot */
-	target = load_bitmap(TARGET_PATH, NULL);
+	for (i = 0; i < 4; i++) {
+		sprintf(t_path, "img/target_%d.bmp", i);
+		targets[i] = load_bitmap(t_path, NULL);
+	}
+
 	patriot = load_bitmap(PATRIOT_PATH, NULL);
 
 	/* clear screen buffer to black */
@@ -75,13 +82,16 @@ void initGraphics()
 
 void endGraphics()
 {
+int32_t i;
+
 	destroy_bitmap(bkg);
 	destroy_bitmap(ss_buffer);
 	destroy_bitmap(ts_buffer);
 	destroy_bitmap(box_buffer);
 	destroy_bitmap(radar_buffer);
-	destroy_bitmap(target);
 	destroy_bitmap(patriot);
+	/* destroy all the targets bitmaps */
+	for (i = 0; i < 4; i++) destroy_bitmap(targets[i]);
 
 	allegro_exit();
 }
@@ -341,9 +351,9 @@ void drawCollision()
  *----------------------------------------------------------------------------+
  */
 
-void drawTarget(int32_t x, int32_t y, float32_t angle)
+void drawTarget(int32_t x, int32_t y, float32_t angle, int32_t index)
 {
-	rotate_sprite(box_buffer, target, x - TARGET_WIDTH / 2,
+	rotate_sprite(box_buffer, targets[index], x - TARGET_WIDTH / 2,
 			y - TARGET_HEIGHT / 2, radtofix(angle));
 }
 

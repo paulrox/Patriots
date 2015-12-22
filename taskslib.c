@@ -38,6 +38,7 @@ struct sched_param par;
 	task_set[index].period = period;
 	task_set[index].deadline = deadline;
 	task_set[index].dmiss = 0;
+	task_set[index].index = index;
 
 	pthread_attr_init(&attr);
 	pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);

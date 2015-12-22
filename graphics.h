@@ -19,7 +19,7 @@ void updateScreen();
 void updateStats();
 uint8_t scanArea(int32_t *xc, int32_t *yc);
 uint8_t checkCollision(stat t, stat p);
-void drawTarget(int32_t x, int32_t y, float32_t angle);
+void drawTarget(int32_t x, int32_t y, float32_t angle, int32_t index);
 void drawPatriot(int32_t x, int32_t y, float32_t angle);
 void drawTaskStats(uint8_t *dmiss);
 void drawSimStats(sim_stats ss, float32_t p_f, float32_t v_f, float32_t a_f);

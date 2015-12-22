@@ -19,6 +19,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "taskslib.h"
+#include "events.h"
 
 
 /* MUTEXES DECLARATIONS */
@@ -29,16 +30,13 @@ pthread_mutex_t	p_mutex;	/* mutex for accessing patriot status */
 
 /* EVENT DECLARATIONS */
 /* number of times the target is found inside the radar area */
-uint8_t	engaged_cycle, tr_centroid, tp_centroid;
+uint8_t	engaged_cycle;
 float32_t pos_f, v_f, a_f, coll_theta;
-coords r_coords;
-stat p_stat, t_stat;
-pred_stat ps;
+coords r_coords[MAX_TARGETS];
+stat p_stat[MAX_TARGETS];
+stat t_stat[MAX_TARGETS];
+pred_stat ps[MAX_TARGETS];
 sim_stats ss;
-uint8_t 	start;	/* 1 simulation is running, 0 otherwise */
-uint8_t		end;	/* notify the end of the program */
-uint8_t 	fired;	/* 1 patriot is fired, 0 otherwise */
-uint8_t		missed;	/* 1 target is been missed by the patriot, 0 otherwise */
 uint8_t		collision; /* 1 a collision has occurred, 0 otherwise */
 uint8_t		pred_ready;
 
@@ -77,6 +75,7 @@ void init()
 	pthread_mutex_init(&p_mutex, NULL);
 
 	/* clean the application data structures */
+	clearEvents();
 	cleanTargetStats();
 	cleanPatriotStats();
 	cleanSimStats();
@@ -125,7 +124,7 @@ uint8_t i;
 
 	set_period(td);
 
-	while (!end) {
+	while (!isEvent(evts, END)) {
 
 		/* Copy all the shared data structures */
 		pthread_mutex_lock(&t_mutex);
@@ -157,9 +156,9 @@ uint8_t i;
 		drawSimStats(sim, pos_f, v_f, a_f);
 		/* I have to convert the y coordinate of the physical
 		 * system to the allegro one */
-		if (start) {
-			drawTarget((int32_t)(t.x / SCALE), BOX_HEIGHT -
-					(int32_t)(t.y / SCALE), t.v_theta);
+		if (start > 0) {
+			for (i = 0; i < start; i++) drawTarget((int32_t)(t.x / SCALE),
+					BOX_HEIGHT - (int32_t)(t.y / SCALE), t.v_theta, i);
 			drawStats(t, TARGET_STATS, TARGET_STATS_Y0);
 			if (tr_centroid) {
 				drawCentroid(r.x, r.y, RADAR_CENTROID);
@@ -204,8 +203,8 @@ void * target_task(void *arg)
 {
 task_des *td;
 float32_t	dt, dx, dy, vx, vy, ax, ay, da;
-
-	start = 1;
+int32_t index;
+uint8_t i, evt_mask;
 
 	pthread_mutex_lock(&sim_mutex);
 	ss.t_fired++;
@@ -213,33 +212,35 @@ float32_t	dt, dx, dy, vx, vy, ax, ay, da;
 
 	td = (task_des*)arg;
 	dt = TSCALE*(float32_t)td->period/1000;
+	index = td->index - TARGET_INDEX;
+	evt_mask = 1;
 
 	/* compute the initial speed vector angle in order
 	 * to hit the middle of the city */
 	pthread_mutex_lock(&t_mutex);
 	/* horizontal spacing between the target and the middle of the city */
-	dx = ((BOX_WIDTH / 2) * SCALE - t_stat.x);
+	dx = ((BOX_WIDTH / 2) * SCALE - t_stat[index].x);
 	/* vertical spacing, always equal to y coordinate */
-	dy = -t_stat.y;
-	t_stat.v_theta = atan2f(dy, dx);
+	dy = -t_stat[index].y;
+	t_stat[index].v_theta = atan2f(dy, dx);
 	da = frand((float32_t)-T_DA, (float32_t)T_DA);
-	t_stat.v_theta += da * (PI / 180);
+	t_stat[index].v_theta += da * (PI / 180);
 	pthread_mutex_unlock(&t_mutex);
 
 	set_period(td);
 
-	while (!end && start) {
+	while (!isEvent(evts, END) && ) {
 
 		pthread_mutex_lock(&t_mutex);
 		/* Compute the target acceleration */
-		ax = t_stat.a * (float32_t)(cos(t_stat.a_theta));
-		ay = t_stat.a * (float32_t)(sin(t_stat.a_theta)),
+		ax = t_stat[index].a * (float32_t)(cos(t_stat[index].a_theta));
+		ay = t_stat[index].a * (float32_t)(sin(t_stat[index].a_theta)),
 		/* Compute the target speed */
-		vx = ax * dt + t_stat.v * (float32_t)(cos(t_stat.v_theta));
-		vy = ay * dt + t_stat.v * (float32_t)(sin(t_stat.v_theta));
+		vx = ax * dt + t_stat[index].v * (float32_t)(cos(t_stat[index].v_theta));
+		vy = ay * dt + t_stat[index].v * (float32_t)(sin(t_stat[index].v_theta));
 		/* Update the target position */
-		t_stat.x += vx * dt + ax * dt * dt / 2;
-		t_stat.y += vy * dt + ay * dt * dt / 2;
+		t_stat[index].x += vx * dt + ax * dt * dt / 2;
+		t_stat[index].y += vy * dt + ay * dt * dt / 2;
 
 		/* Check if the target reached the ground */
 		if (t_stat.y <= CITY_COLLISION_Y) {
@@ -252,9 +253,9 @@ float32_t	dt, dx, dy, vx, vy, ax, ay, da;
 			pthread_mutex_unlock(&sim_mutex);
 		}
 		/* Update the speed modulus */
-		t_stat.v = sqrt((vx*vx) + (vy*vy));
+		t_stat[index].v = sqrt((vx*vx) + (vy*vy));
 		/* Update the target speed angle according to the new speed */
-		t_stat.v_theta = atan2f(vy, vx);
+		t_stat[index].v_theta = atan2f(vy, vx);
 
 		pthread_mutex_unlock(&t_mutex);
 
@@ -273,7 +274,7 @@ float32_t	dt, dx, dy, vx, vy, ax, ay, da;
 void * radar_task(void *arg)
 {
 task_des *td;
-int32_t xc, yc;
+int32_t xc, yc, i;
 uint8_t ret;
 
 	td = (task_des*)arg;
@@ -281,18 +282,18 @@ uint8_t ret;
 	set_period(td);
 
 	while (!end) {
-		/* Scan the area looking for a target */
-		ret = scanArea(&xc, &yc);
-
-		if (ret) {
-			engaged_cycle++;
-			/* Update the target centroid coordinates */
-			pthread_mutex_lock(&r_mutex);
-			r_coords.x = xc;
-			r_coords.y = yc;
-			pthread_mutex_unlock(&r_mutex);
+		/* Scan the area looking for the targets */
+		for (i = 0; i < start; i++) {
+			ret = scanArea(&xc, &yc, i);
+			if (ret) {
+				engaged_cycle++;
+				/* Update the target centroid coordinates */
+				pthread_mutex_lock(&r_mutex);
+				r_coords.x = xc;
+				r_coords.y = yc;
+				pthread_mutex_unlock(&r_mutex);
+			}
 		}
-
 		check_deadline(td);
 
 		wfp(td);
@@ -316,12 +317,12 @@ task_des *td;
 	while (!end) {
 		/* key 'A' spawns a target only if it's not on the screen */
 		if (key[KEY_A]) {
-			if (!start){
+			if (start <= MAX_TARGETS){
 				/* reset the target and patriot physical status */
 				cleanTargetStats();
 				cleanPatriotStats();
 				/* create a new target task */
-				create_task(target_task, 50, 50, 32, TARGET_INDEX);
+				create_task(target_task, 50, 50, 32, TARGET_INDEX + start);
 			}
 		}
 		/* key 'C' shows the target centroid computed from
@@ -442,7 +443,7 @@ pred_stat pred_tmp;
 
 	dt = TSCALE*(float32_t)td->period/1000;
 
-	while (!end && !missed && start) {
+	while (!end && !missed && start > 0) {
 
 		/* Get the prediction data */
 		pthread_mutex_lock(&r_mutex);
@@ -592,19 +593,20 @@ float32_t xt, yt, xp, yp, dist, dt, theta, theta_i, i;
  *----------------------------------------------------------------------------+
  */
 
-static void cleanTargetStats()
+static void cleanTargetStats(int32_t index)
 {
 
-	t_stat.v = frand((float32_t)MIN_T_V, (float32_t)MAX_T_V);
-	t_stat.v_theta = 0;
-	t_stat.x = frand((float32_t)MIN_T_X0, (float32_t)MAX_T_X0);
-	t_stat.y = TARGET_Y0;
-	t_stat.a = G0;	/* the target is affected only by gravity */
-	t_stat.a_theta = TARGET_ACC_DEG;	/* 270 degrees */
+	t_stat[index].v = frand((float32_t)MIN_T_V, (float32_t)MAX_T_V);
+	t_stat[index].v_theta = 0;
+	t_stat[index].x = frand((float32_t)MIN_T_X0, (float32_t)MAX_T_X0);
+	t_stat[index].y = TARGET_Y0;
+	t_stat[index].a = G0;	/* the target is affected only by gravity */
+	t_stat[index].a_theta = TARGET_ACC_DEG;	/* 270 degrees */
 
-	ps.xf = ps.yf = ps.vxf = ps.vyf = ps.axf = ps.ayf = 0;
+	ps[index].xf = ps[index].yf = ps[index].vxf = ps[index].vyf = 0;
+	ps[index].axf = ps[index].ayf = 0;
 
-	r_coords.x = r_coords.y = 0;
+	r_coords[index].x = r_coords[index].y = 0;
 
 	fired = start = engaged_cycle = missed = collision = 0;
 	pred_ready = 0;
@@ -617,15 +619,15 @@ static void cleanTargetStats()
  *----------------------------------------------------------------------------+
  */
 
-static void cleanPatriotStats()
+static void cleanPatriotStats(int32_t index)
 {
 
-	p_stat.v = 100;
-	p_stat.v_theta = 0;
-	p_stat.x = PATRIOT_X0;
-	p_stat.y = PATRIOT_Y0;
-	p_stat.a = PATRIOT_ACC;
-	p_stat.a_theta = PATRIOT_A_THETA;
+	p_stat[index].v = 100;
+	p_stat[index].v_theta = 0;
+	p_stat[index].x = PATRIOT_X0;
+	p_stat[index].y = PATRIOT_Y0;
+	p_stat[index].a = PATRIOT_ACC;
+	p_stat[index].a_theta = PATRIOT_A_THETA;
 }
 
 /*----------------------------------------------------------------------------+

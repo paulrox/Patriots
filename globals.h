@@ -24,7 +24,8 @@
 
 /* TASK MACROS */
 
-#define TASK_NUM			6
+#define TASK_NUM			12
+#define MAX_TARGETS			4
 #define	DISPLAY_INDEX		0
 #define DISPLAY_PER			35
 #define DISPLAY_DL			DISPLAY_PER
@@ -37,18 +38,18 @@
 #define	KEYBOARD_PER		100
 #define	KEYBOARD_DL			KEYBOARD_PER
 #define	KEYBOARD_PRIO		33
-#define	TARGET_INDEX		3
-#define	TARGET_PER			50
-#define	TARGET_DL			TARGET_PER
-#define	TARGET_PRIO			30
-#define	PATRIOT_INDEX		4
-#define	PATRIOT_PER			50
-#define	PATRIOT_DL			PATRIOT_PER
-#define	PATRIOT_PRIO		31
-#define ECS_INDEX			5
+#define ECS_INDEX			3
 #define ECS_PER				35
 #define ECS_DL				ECS_PER
 #define ECS_PRIO			28
+#define	TARGET_INDEX		4
+#define	TARGET_PER			50
+#define	TARGET_DL			TARGET_PER
+#define	TARGET_PRIO			30
+#define	PATRIOT_INDEX		8
+#define	PATRIOT_PER			50
+#define	PATRIOT_DL			PATRIOT_PER
+#define	PATRIOT_PRIO		31
 
 /* GRAPHICS MACROS */
 
@@ -87,10 +88,10 @@
 #define RADAR_POS_Y 		484
 #define RADAR_CENTROID		0
 #define PRED_CENTROID		1
-#define CITY_PATH 			"skyline_wide.bmp"
-#define RADAR_PATH 			"radar_small.bmp"
-#define TARGET_PATH			"target.bmp"
-#define PATRIOT_PATH		"patriot.bmp"
+#define CITY_PATH 			"img/skyline.bmp"
+#define RADAR_PATH 			"img/radar.bmp"
+#define TARGET_PATH			"img/target_"
+#define PATRIOT_PATH		"img/patriot.bmp"
 #define VECTOR_LEN			20
 #define CITY_COLLISION_Y	70 * SCALE
 #define radtofix(x)			ftofix(((-x) * 128) / PI)
