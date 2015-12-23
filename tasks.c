@@ -30,21 +30,21 @@ pthread_mutex_t	p_mutex;	/* mutex for accessing patriot status */
 
 /* EVENT DECLARATIONS */
 /* number of times the target is found inside the radar area */
-uint8_t	engaged_cycle;
-float32_t pos_f, v_f, a_f, coll_theta;
+uint8_t	engaged_cycle[MAX_TARGETS];
+float32_t pos_f, v_f, a_f;
+float32_t coll_theta[MAX_TARGETS];
 coords r_coords[MAX_TARGETS];
 stat p_stat[MAX_TARGETS];
 stat t_stat[MAX_TARGETS];
 pred_stat ps[MAX_TARGETS];
 sim_stats ss;
-uint8_t		collision; /* 1 a collision has occurred, 0 otherwise */
-uint8_t		pred_ready;
 
 /* LOCAL FUNCTIONS DECLARATION */
+static int32_t findFreeTarget();
 static void filterStats(int32_t x, int32_t y, float32_t period, pred_stat *ps);
-static void computeIntercept(pred_stat t, stat p);
-static void cleanTargetStats();
-static void cleanPatriotStats();
+static void computeIntercept(pred_stat t, stat p, int32_t index);
+static void cleanTargetStats(int32_t index);
+static void cleanPatriotStats(int32_t index);
 static void cleanSimStats();
 static void getCartStats();
 
@@ -65,6 +65,7 @@ static void getCartStats();
 
 void init()
 {
+int32_t i;
 	/* initialize the graphic module */
 	initGraphics();
 
@@ -76,9 +77,11 @@ void init()
 
 	/* clean the application data structures */
 	clearEvents();
-	cleanTargetStats();
-	cleanPatriotStats();
 	cleanSimStats();
+	for (i = 0; i < MAX_TARGETS; i++) {
+		cleanTargetStats(i);
+		cleanPatriotStats(i);
+	}
 }
 
 /*----------------------------------------------------------------------------+
@@ -114,11 +117,12 @@ void * display_task(void *arg)
 {
 task_des *td;
 sim_stats sim;
-stat t, p, pred_s;
-pred_stat pred;
-coords r;
+stat pred_s;
+stat *t, *p;
+pred_stat *pred;
+coords *r;
 uint8_t dmiss[TASK_NUM];
-uint8_t i;
+uint8_t i, tm_tmp, pm_tmp;
 
 	td = (task_des*)arg;
 
@@ -126,6 +130,8 @@ uint8_t i;
 
 	while (!isEvent(evts, END)) {
 
+		tm_tmp = 1;
+		pm_tmp = 1;
 		/* Copy all the shared data structures */
 		pthread_mutex_lock(&t_mutex);
 		t = t_stat;
@@ -140,10 +146,10 @@ uint8_t i;
 		pred = ps;
 		pthread_mutex_unlock(&r_mutex);
 
-		pred_s.x = pred.xf;
-		pred_s.y = pred.yf;
-		cartToPolar(pred.vxf, pred.vyf, &pred_s.v, &pred_s.v_theta);
-		cartToPolar(pred.axf, pred.ayf, &pred_s.a, &pred_s.a_theta);
+		pred_s.x = pred[0].xf;
+		pred_s.y = pred[0].yf;
+		cartToPolar(pred[0].vxf, pred[0].vyf, &pred_s.v, &pred_s.v_theta);
+		cartToPolar(pred[0].axf, pred[0].ayf, &pred_s.a, &pred_s.a_theta);
 
 		pthread_mutex_lock(&sim_mutex);
 		sim = ss;
@@ -156,31 +162,47 @@ uint8_t i;
 		drawSimStats(sim, pos_f, v_f, a_f);
 		/* I have to convert the y coordinate of the physical
 		 * system to the allegro one */
-		if (start > 0) {
-			for (i = 0; i < start; i++) drawTarget((int32_t)(t.x / SCALE),
-					BOX_HEIGHT - (int32_t)(t.y / SCALE), t.v_theta, i);
-			drawStats(t, TARGET_STATS, TARGET_STATS_Y0);
-			if (tr_centroid) {
-				drawCentroid(r.x, r.y, RADAR_CENTROID);
+		if (isStarted) {
+			tm_tmp = 1;
+			for (i = 0; i < MAX_TARGETS; i++) {
+				if (isEvent(t_mask, tm_tmp)) drawTarget((int32_t)(t[i].x / SCALE),
+						BOX_HEIGHT - (int32_t)(t[i].y / SCALE), t[i].v_theta, i);
+				tm_tmp <<= 1;
+			}
+			drawStats(t[0], TARGET_STATS, TARGET_STATS_Y0);
+			if (isEvent(evts, T_CENTROID)) {
+				drawCentroid(r[0].x, r[0].y, RADAR_CENTROID);
 			}
 		}
-		if (fired){
-			drawPatriot((int32_t)(p.x / SCALE), BOX_HEIGHT -
-					(int32_t)(p.y / SCALE), p.v_theta);
-			if (tp_centroid) {
-				drawCentroid((int32_t)(pred.xf / SCALE), BOX_HEIGHT -
-						(int32_t)(pred.yf / SCALE), PRED_CENTROID);
+		if (isFired){
+			pm_tmp = 1;
+			for (i = 0; i < MAX_TARGETS; i++) {
+				if (isEvent(p_mask, pm_tmp))
+					drawPatriot((int32_t)(p[i].x / SCALE), BOX_HEIGHT -
+						(int32_t)(p[i].y / SCALE), p[i].v_theta);
+				pm_tmp <<= 1;
 			}
-			drawStats(p, PATRIOT_STATS, PATRIOT_STATS_Y0);
+			if (isEvent(evts, P_CENTROID)) {
+				drawCentroid((int32_t)(pred[0].xf / SCALE), BOX_HEIGHT -
+						(int32_t)(pred[0].yf / SCALE), PRED_CENTROID);
+			}
+			drawStats(p[0], PATRIOT_STATS, PATRIOT_STATS_Y0);
 			drawStats(pred_s, PRED_STATS, PRED_STATS_Y0);
-			if (checkCollision(t, p) && collision == 0) {
-				collision = 1;
-				start = 0;
-				pthread_mutex_lock(&sim_mutex);
-				ss.t_hit++;
-				ss.t_hitratio = (float32_t)ss.t_hit / ss.t_fired;
-				pthread_mutex_unlock(&sim_mutex);
-				drawCollision();
+			tm_tmp = pm_tmp = 1;
+			for (i = 0; i < MAX_TARGETS; i++) {
+				if (isEvent(t_mask, tm_tmp) && isEvent(p_mask, pm_tmp) &&
+						checkCollision(t[i], p[i])) {
+					setEvent(p_mask, pm_tmp << 4);
+					clearEvent(t_mask, tm_tmp);
+					clearEvent(p_mask, pm_tmp);
+					pthread_mutex_lock(&sim_mutex);
+					ss.t_hit++;
+					ss.t_hitratio = (float32_t)ss.t_hit / ss.t_fired;
+					pthread_mutex_unlock(&sim_mutex);
+					drawCollision();
+				}
+				tm_tmp <<= 1;
+				pm_tmp <<= 1;
 			}
 		}
 		updateScreen();	/* updates the simulation area of the screen */
@@ -204,7 +226,7 @@ void * target_task(void *arg)
 task_des *td;
 float32_t	dt, dx, dy, vx, vy, ax, ay, da;
 int32_t index;
-uint8_t i, evt_mask;
+uint8_t i, evt_mask, tmp_mask;
 
 	pthread_mutex_lock(&sim_mutex);
 	ss.t_fired++;
@@ -214,6 +236,8 @@ uint8_t i, evt_mask;
 	dt = TSCALE*(float32_t)td->period/1000;
 	index = td->index - TARGET_INDEX;
 	evt_mask = 1;
+	for (i = 0; i < index; i++) evt_mask <<= 1;
+	printf("index: %d\n", index);
 
 	/* compute the initial speed vector angle in order
 	 * to hit the middle of the city */
@@ -229,7 +253,7 @@ uint8_t i, evt_mask;
 
 	set_period(td);
 
-	while (!isEvent(evts, END) && ) {
+	while (!isEvent(evts, END) && isEvent(t_mask, evt_mask)) {
 
 		pthread_mutex_lock(&t_mutex);
 		/* Compute the target acceleration */
@@ -243,10 +267,11 @@ uint8_t i, evt_mask;
 		t_stat[index].y += vy * dt + ay * dt * dt / 2;
 
 		/* Check if the target reached the ground */
-		if (t_stat.y <= CITY_COLLISION_Y) {
+		if (t_stat[index].y <= CITY_COLLISION_Y) {
 			/* Restart the simulation */
-			start = 0;
-			missed = 1;
+			clearEvent(t_mask, evt_mask);
+			tmp_mask = evt_mask << 4;
+			setEvent(t_mask, tmp_mask);
 			pthread_mutex_lock(&sim_mutex);
 			ss.t_missed++;
 			ss.t_hitratio = (float32_t)ss.t_hit / ss.t_fired;
@@ -275,24 +300,28 @@ void * radar_task(void *arg)
 {
 task_des *td;
 int32_t xc, yc, i;
-uint8_t ret;
+uint8_t ret, mask;
 
 	td = (task_des*)arg;
 
 	set_period(td);
 
-	while (!end) {
+	while (!isEvent(evts, END)) {
+		mask = 1;
 		/* Scan the area looking for the targets */
-		for (i = 0; i < start; i++) {
-			ret = scanArea(&xc, &yc, i);
-			if (ret) {
-				engaged_cycle++;
-				/* Update the target centroid coordinates */
-				pthread_mutex_lock(&r_mutex);
-				r_coords.x = xc;
-				r_coords.y = yc;
-				pthread_mutex_unlock(&r_mutex);
+		for (i = 0; i < MAX_TARGETS; i++) {
+			if (isEvent(t_mask, mask)) {
+				ret = scanArea(&xc, &yc, i);
+				if (ret) {
+					engaged_cycle[i]++;
+					/* Update the target centroid coordinates */
+					pthread_mutex_lock(&r_mutex);
+					r_coords[i].x = xc;
+					r_coords[i].y = yc;
+					pthread_mutex_unlock(&r_mutex);
+				}
 			}
+			mask <<= 1;
 		}
 		check_deadline(td);
 
@@ -309,6 +338,7 @@ uint8_t ret;
 void * parse_keyboard(void *arg)
 {
 task_des *td;
+int32_t free;
 
 	td = (task_des*)arg;
 
@@ -317,25 +347,27 @@ task_des *td;
 	while (!end) {
 		/* key 'A' spawns a target only if it's not on the screen */
 		if (key[KEY_A]) {
-			if (start <= MAX_TARGETS){
-				/* reset the target and patriot physical status */
-				cleanTargetStats();
-				cleanPatriotStats();
+			if (freeTargets){
+				/* search a free target structure */
+				free = findFreeTarget();
 				/* create a new target task */
-				create_task(target_task, 50, 50, 32, TARGET_INDEX + start);
+				create_task(target_task, 50, 50, 32, TARGET_INDEX + free);
 			}
 		}
 		/* key 'C' shows the target centroid computed from
 		 * radar coordinates */
-		if (key[KEY_C] && start) tr_centroid = (tr_centroid + 1) % 2;
+		if (key[KEY_C] && isStarted) {
+			toggleEvent(evts, T_CENTROID);
+		}
 		/* key 'P' shows the target centroid computed from
 		 * predicted coordinates */
-		if (key[KEY_P] && start) tp_centroid = (tp_centroid + 1) % 2;
+		if (key[KEY_P] && isStarted) {
+			toggleEvent(evts, P_CENTROID);
+		}
 		/* key 'R' reset the simulation */
-		if (key[KEY_R] && start) {
-			start = 0;
-			fired = 0;
-			missed = 0;
+		if (key[KEY_R] && isStarted) {
+			t_mask = 0;
+			p_mask = 0;
 		}
 		/* keys '2' and '1' modify the position filter */
 		if (key[KEY_2]) {
@@ -359,7 +391,7 @@ task_des *td;
 			if (a_f > FILTER_MIN) a_f -= FILTER_STEP;
 		}
 		/* key 'ESC' quits the program */
-		if (key[KEY_ESC]) end = 1;
+		if (key[KEY_ESC]) setEvent(evts, END);
 		check_deadline(td);
 
 		wfp(td);
@@ -376,46 +408,52 @@ task_des *td;
 void * ecs_task(void *arg)
 {
 task_des *td;
-coords r;
+coords *r;
 stat tmp;
-pred_stat s;
+pred_stat *s;
 float32_t dx, dy, theta;
+int32_t i;
+uint8_t mask;
 
 	td = (task_des*)arg;
 
 	set_period(td);
 
-	while (!end) {
+	while (!isEvent(evts, END)) {
 		pthread_mutex_lock(&r_mutex);
 		r = r_coords;
 		s = ps;
 		pthread_mutex_unlock(&r_mutex);
 
+		mask = 1;
 		/* if a target is inside the radar area for at least MIN_RAD_CYCLE
 		 *  periods, fire the patriot */
-		if (!fired && engaged_cycle > MIN_RAD_CYCLE) {
-			/* Compute the predicted position according to the actual
-			 *  centroid coordinates */
-			filterStats(r.x*SCALE, BOX_HEIGHT * SCALE - r.y*SCALE,
-					(float32_t)(td->period) / 1000, &s);
-			/* create the patriot task */
-			create_task(patriot_task, PATRIOT_PER, PATRIOT_DL, PATRIOT_PRIO,
-					PATRIOT_INDEX);
-			fired = 1;
-		} else if (fired){
-			filterStats(r.x*SCALE, BOX_HEIGHT * SCALE - r.y*SCALE,
-					(float32_t)(td->period) / 1000, &s);
-			pthread_mutex_lock(&p_mutex);
-			tmp = p_stat;
-			pthread_mutex_unlock(&p_mutex);
-			if (tmp.v >= PATRIOT_V_MAX && !pred_ready) {
-				computeIntercept(s, tmp);
-				pred_ready = 1;
+		for (i = 0; i < MAX_TARGETS; i++) {
+			if (!isEvent(p_mask, mask) && engaged_cycle[i] > MIN_RAD_CYCLE) {
+				/* Compute the predicted position according to the actual
+				 *  centroid coordinates */
+				filterStats(r[i].x*SCALE, BOX_HEIGHT * SCALE - r[i].y*SCALE,
+						(float32_t)(td->period) / 1000, &s[i]);
+				/* create the patriot task */
+				create_task(patriot_task, PATRIOT_PER, PATRIOT_DL, PATRIOT_PRIO,
+					PATRIOT_INDEX + i);
+				setEvent(p_mask, mask);
+			} else if (isEvent(p_mask, mask)){
+				filterStats(r[i].x*SCALE, BOX_HEIGHT * SCALE - r[i].y*SCALE,
+						(float32_t)(td->period) / 1000, &s[i]);
+				pthread_mutex_lock(&p_mutex);
+				tmp = p_stat[i];
+				pthread_mutex_unlock(&p_mutex);
+				if (tmp.v >= PATRIOT_V_MAX && !isEvent(evts, mask << 4)) {
+					computeIntercept(s[i], tmp, i);
+					setEvent(evts, mask << 4); /* prediction ready */
+				}
 			}
+			pthread_mutex_lock(&r_mutex);
+			ps[i] = s[i];
+			pthread_mutex_unlock(&r_mutex);
+			mask <<= 1;
 		}
-		pthread_mutex_lock(&r_mutex);
-		ps = s;
-		pthread_mutex_unlock(&r_mutex);
 
 		check_deadline(td);
 
@@ -436,22 +474,28 @@ task_des *td;
 float32_t x, y, p_x, p_y, p_vx, p_vy, p_ax, p_ay, theta, dx, dy, dt;
 stat patr_tmp;
 pred_stat pred_tmp;
+uint8_t mask;
+int32_t i, index;
 
 	td = (task_des*)arg;
 
 	set_period(td);
 
 	dt = TSCALE*(float32_t)td->period/1000;
+	index = td->index - PATRIOT_INDEX;
+	mask = 1;
+	for (i = 0; i < index; i++) mask <<= 1;
 
-	while (!end && !missed && start > 0) {
+	while (!isEvent(evts, END) && !isEvent(t_mask, mask << 4) &&
+			isEvent(t_mask, mask) > 0) {
 
 		/* Get the prediction data */
 		pthread_mutex_lock(&r_mutex);
-		pred_tmp = ps;
+		pred_tmp = ps[index];
 		pthread_mutex_unlock(&r_mutex);
 		/* Get the patriot data */
 		pthread_mutex_lock(&p_mutex);
-		patr_tmp = p_stat;
+		patr_tmp = p_stat[index];
 		pthread_mutex_unlock(&p_mutex);
 
 		x = pred_tmp.xf;
@@ -465,26 +509,26 @@ pred_stat pred_tmp;
 		dx = x - p_x;
 		dy = y - p_y;
 
-		if (!pred_ready) {
+		if (!isEvent(evts, mask << 4)) {
 			theta = atan2f(dy, dx);
 		} else {
-			theta = coll_theta;
+			theta = coll_theta[index];
 		}
 
 		pthread_mutex_lock(&p_mutex);
 		/* Update the patriot acceleration */
-		p_ax = p_stat.a * cos(theta);
-		p_ay = p_stat.a * sin(theta);
-		p_stat.a_theta = theta;
+		p_ax = p_stat[index].a * cos(theta);
+		p_ay = p_stat[index].a * sin(theta);
+		p_stat[index].a_theta = theta;
 		/* Update the patriot speed */
-		if (p_stat.v <= PATRIOT_V_MAX) {
+		if (p_stat[index].v <= PATRIOT_V_MAX) {
 			p_vx += p_ax * dt;
 			p_vy += (p_ay - G0) * dt;
-			p_stat.v_theta = atan2f(p_vy, p_vx);
+			p_stat[index].v_theta = atan2f(p_vy, p_vx);
 		} else {
-			p_stat.v_theta = atan2f(p_vy + p_ay * dt, p_vx + p_ax * dt);
-			p_vx = p_stat.v * cos(p_stat.v_theta);
-			p_vy = p_stat.v * sin(p_stat.v_theta);
+			p_stat[index].v_theta = atan2f(p_vy + p_ay * dt, p_vx + p_ax * dt);
+			p_vx = p_stat[index].v * cos(p_stat[index].v_theta);
+			p_vy = p_stat[index].v * sin(p_stat[index].v_theta);
 			p_ax = 0;
 			p_ay = G0;
 		}
@@ -492,9 +536,9 @@ pred_stat pred_tmp;
 		p_x += p_vx * dt + p_ax * dt * dt / 2;
 		p_y += p_vy * dt + (p_ay - G0) * dt * dt / 2;
 
-		p_stat.x = p_x;
-		p_stat.y = p_y;
-		p_stat.v = sqrt((p_vx*p_vx) + (p_vy*p_vy));
+		p_stat[index].x = p_x;
+		p_stat[index].y = p_y;
+		p_stat[index].v = sqrt((p_vx*p_vx) + (p_vy*p_vy));
 
 		pthread_mutex_unlock(&p_mutex);
 
@@ -502,8 +546,8 @@ pred_stat pred_tmp;
 
 		wfp(td);
 	}
-	cleanTargetStats();	/* reset the target physical status */
-	cleanPatriotStats();/* reset the patriot physical status */
+	cleanTargetStats(index);	/* reset the target physical status */
+	cleanPatriotStats(index);/* reset the patriot physical status */
 	pthread_exit(NULL);
 }
 
@@ -513,6 +557,32 @@ pred_stat pred_tmp;
  *	|																		  |
  *	+-------------------------------------------------------------------------+
  */
+
+/*----------------------------------------------------------------------------+
+ *	findFreeTarget()														  |
+ *																			  |
+ *	Searches a free target data structure and if found returns its index 	  |
+ *----------------------------------------------------------------------------+
+ */
+
+static int32_t findFreeTarget()
+{
+int32_t index;
+uint8_t mask;
+
+	mask = 1;
+	for (index = 0; index < MAX_TARGETS; index++) {
+		if (!isEvent(t_mask, mask)) { /* target non started yet */
+			cleanTargetStats(index);
+			setEvent(t_mask, mask);
+			return index;
+		}
+		mask <<= 1;
+	}
+	index = -1;
+	return index;
+}
+
 
 /*----------------------------------------------------------------------------+
  *	filterStats(x_new, y_new, period, pos_f, v_f, a_f)						  |
@@ -560,7 +630,7 @@ float32_t xf, yf, vx, vy, ax, ay, vxf, vyf, axf, ayf;
  *----------------------------------------------------------------------------+
  */
 
-static void computeIntercept(pred_stat t, stat p)
+static void computeIntercept(pred_stat t, stat p, int32_t index)
 {
 float32_t xt, yt, xp, yp, dist, dt, theta, theta_i, i;
 
@@ -574,7 +644,7 @@ float32_t xt, yt, xp, yp, dist, dt, theta, theta_i, i;
 			yp = p.y + p.v * sin(i) * dt;
 			dist = sqrt((xt - xp) * (xt - xp) + (yt - yp) * (yt - yp));
 			if (dist <= COLL_DIST / 2) {
-				coll_theta = i;
+				coll_theta[index] = i;
 				printf("t_intercept = %.2f\n", dt);
 				return;
 			}
@@ -595,7 +665,6 @@ float32_t xt, yt, xp, yp, dist, dt, theta, theta_i, i;
 
 static void cleanTargetStats(int32_t index)
 {
-
 	t_stat[index].v = frand((float32_t)MIN_T_V, (float32_t)MAX_T_V);
 	t_stat[index].v_theta = 0;
 	t_stat[index].x = frand((float32_t)MIN_T_X0, (float32_t)MAX_T_X0);
@@ -608,8 +677,9 @@ static void cleanTargetStats(int32_t index)
 
 	r_coords[index].x = r_coords[index].y = 0;
 
-	fired = start = engaged_cycle = missed = collision = 0;
-	pred_ready = 0;
+	clearTargetEvents(index);
+
+	engaged_cycle[index] = 0;
 }
 
 /*----------------------------------------------------------------------------+
@@ -639,15 +709,14 @@ static void cleanPatriotStats(int32_t index)
 
 static void cleanSimStats()
 {
-	end = 0;
-
 	ss.t_fired = ss.t_missed = ss.t_hit = ss.t_hitratio = 0;
 
 	pos_f = P1;
 	v_f = P2;
 	a_f = P3;
 
-	tr_centroid = tp_centroid = 0;
+	clearEvent(evts, T_CENTROID);
+	clearEvent(evts, P_CENTROID);
 }
 
 /*----------------------------------------------------------------------------+

@@ -18,8 +18,8 @@
 
 #include "globals.h"
 
-int32_t line_color, txt_color, head_color, t_color, p_color,
-	tc_color, tp_color;
+int32_t line_color, txt_color, head_color, p_color, tc_color, tp_color;
+int32_t t_colors[MAX_TARGETS];
 
 BITMAP *city, *radar, *bkg, *box_buffer, *ss_buffer, *ts_buffer,
 	*radar_buffer, *patriot;
@@ -48,7 +48,11 @@ char t_path[13];
 	txt_color = makecol(255, 255, 0);	/* yellow color for text */
 	line_color = makecol(255, 0, 0);	/* red color for lines */
 	head_color = makecol(160, 160, 160);/* gray color for heading text */
-	t_color = makecol(255, 0, 0);		/* red color for target */
+	/* target colors */
+	t_colors[0] = makecol(255, 0, 0);
+	t_colors[1] = makecol(0, 0, 255);
+	t_colors[2] = makecol(255, 214, 0);
+	t_colors[3] = makecol(197, 197, 197);
 	p_color = makecol(0, 255, 0);		/* green color for patriot */
 	tc_color = makecol(255, 255, 0);	/* yellow color for target centroid */
 	tp_color = makecol(0, 255, 255);	/* blue color for predicted centroid */
@@ -171,7 +175,7 @@ void updateStats()
  *----------------------------------------------------------------------------+
  */
 
-uint8_t scanArea(int32_t *xc, int32_t *yc)
+uint8_t scanArea(int32_t *xc, int32_t *yc, int32_t index)
 {
 uint8_t found;
 int32_t x, y, pixel_num, target_x, target_y;
@@ -184,7 +188,7 @@ int32_t x, y, pixel_num, target_x, target_y;
 	/* scan the radar buffer searching the target */
 	for (x = 0; x <= RAD_RANGE_X; x++) {
 		for (y = 0; y <= RAD_RANGE_Y - RAD_RANGE_MIN; y++) {
-			if (getpixel(radar_buffer, x, y) == t_color) {
+			if (getpixel(radar_buffer, x, y) == t_colors[index]) {
 				found = 1;
 				target_x += x;
 				target_y += y;

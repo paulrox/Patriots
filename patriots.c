@@ -12,6 +12,7 @@
 #include "taskslib.h"		// task management functions
 #include "graphics.h"		// graphics functions
 #include "tasks.h"			// task code and task-related functions
+#include "events.h"
 
 
 
@@ -29,7 +30,7 @@ int main()
 	create_task(ecs_task, ECS_PER, ECS_DL, ECS_PRIO, ECS_INDEX);
 
 	/* wait until application end */
-	while(!end);
+	while(!isEvent(evts, END));
 
 	endProgram();
 
