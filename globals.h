@@ -65,19 +65,11 @@
 #define BOX_POS_X			0
 #define BOX_POS_Y			TS_POS_Y + TS_HEIGHT
 #define SS_WIDTH			198
-#define SS_HEIGHT			600
-#define TARGET_STATS		0
-#define TARGET_STATS_Y0		200
-#define PATRIOT_STATS		1
-#define PATRIOT_STATS_Y0	310
-#define PRED_STATS			2
-#define PRED_STATS_Y0		410
+#define SS_HEIGHT			300
 #define TARGET_WIDTH		40
 #define TARGET_HEIGHT		12
 #define PATRIOT_WIDTH		40
 #define PATRIOT_HEIGHT		12
-#define TARGET_BOX			0
-#define PATRIOT_BOX			1
 #define CITY_WIDTH			800
 #define CITY_HEIGHT			167
 #define CITY_POS_X 			0
@@ -118,8 +110,8 @@
 #define PATRIOT_A_THETA		PI / 2
 #define PI					3.14159265
 #define P1					0.9	/* constant used for filtering the position */
-#define P2					0.95	/* constant used for filtering the speed */
-#define P3					0.98	/* constant used for acc. filtering */
+#define P2					0.95/* constant used for filtering the speed */
+#define P3					0.98/* constant used for acc. filtering */
 #define FILTER_STEP			0.01
 #define FILTER_MAX			0.99
 #define FILTER_MIN			0.00

@@ -16,6 +16,7 @@
 #include <math.h>
 #include <allegro.h>
 
+#include "events.h"
 #include "globals.h"
 
 int32_t line_color, txt_color, head_color, p_color, tc_color, tp_color;
@@ -24,6 +25,8 @@ int32_t t_colors[MAX_TARGETS];
 BITMAP *city, *radar, *bkg, *box_buffer, *ss_buffer, *ts_buffer,
 	*radar_buffer, *patriot;
 BITMAP	*targets[MAX_TARGETS];
+
+static void drawInstructions();
 
 /*----------------------------------------------------------------------------+
  *	initGraphics()															  |
@@ -119,6 +122,7 @@ void drawGUI() {
 
 	/* RIGHT SIDE GUI */
 	line(screen, BOX_WIDTH + 1, 0, BOX_WIDTH + 1, SCREEN_HEIGHT, line_color);
+	drawInstructions();
 
 	/* load background images */
 	city = load_bitmap(CITY_PATH, NULL);
@@ -226,7 +230,7 @@ float32_t dist;
 }
 
 /*----------------------------------------------------------------------------+
- *	drawTaskStats(dmiss)									  |
+ *	drawTaskStats(dmiss)									 				  |
  *																			  |
  *	Draw statistics about the tasks into a buffer 							  |
  *	and then copy them on the screen	  	 								  |
@@ -236,26 +240,35 @@ float32_t dist;
 void drawTaskStats(uint8_t *dmiss)
 {
 char_t s[20];
+int32_t i, sum;
 
+	sum = 0;
 	clear_to_color(ts_buffer, 0);
-	textout_centre_ex(ts_buffer, font, "Display", 50, 2, head_color, 0);
+	textout_centre_ex(ts_buffer, font, "Display", 100, 10, head_color, 0);
 	sprintf(s, "DMiss: %d", dmiss[0]);
-	textout_centre_ex(ts_buffer, font, s, 50, 22, head_color, 0);
-	textout_centre_ex(ts_buffer, font, "Radar", 150, 2, head_color, 0);
+	textout_centre_ex(ts_buffer, font, s, 100, 32, head_color, 0);
+	textout_centre_ex(ts_buffer, font, "Radar", 200, 10, head_color, 0);
 	sprintf(s, "DMiss: %d", dmiss[1]);
-	textout_centre_ex(ts_buffer, font, s, 150, 22, head_color, 0);
-	textout_centre_ex(ts_buffer, font, "Keyboard", 250, 2, head_color, 0);
+	textout_centre_ex(ts_buffer, font, s, 200, 32, head_color, 0);
+	textout_centre_ex(ts_buffer, font, "Keyboard", 300, 10, head_color, 0);
 	sprintf(s, "DMiss: %d", dmiss[2]);
-	textout_centre_ex(ts_buffer, font, s, 250, 22, head_color, 0);
-	textout_centre_ex(ts_buffer, font, "Target", 350, 2, head_color, 0);
+	textout_centre_ex(ts_buffer, font, s, 300, 32, head_color, 0);
+	textout_centre_ex(ts_buffer, font, "ECS", 400, 10, head_color, 0);
 	sprintf(s, "DMiss: %d", dmiss[3]);
-	textout_centre_ex(ts_buffer, font, s, 350, 22, head_color, 0);
-	textout_centre_ex(ts_buffer, font, "Patriot", 450, 2, head_color, 0);
-	sprintf(s, "DMiss: %d", dmiss[4]);
-	textout_centre_ex(ts_buffer, font, s, 450, 22, head_color, 0);
-	textout_centre_ex(ts_buffer, font, "ECS", 550, 2, head_color, 0);
-	sprintf(s, "DMiss: %d", dmiss[5]);
-	textout_centre_ex(ts_buffer, font, s, 550, 22, head_color, 0);
+	textout_centre_ex(ts_buffer, font, s, 400, 32, head_color, 0);
+	for (i = TARGET_INDEX; i < TARGET_INDEX + MAX_TARGETS; i++) {
+		sum += dmiss[i];
+	}
+	textout_centre_ex(ts_buffer, font, "Target", 500, 10, head_color, 0);
+	sprintf(s, "DMiss: %d", sum);
+	textout_centre_ex(ts_buffer, font, s, 500, 32, head_color, 0);
+	sum = 0;
+	for (i = PATRIOT_INDEX; i < PATRIOT_INDEX + MAX_TARGETS; i++) {
+		sum += dmiss[i];
+	}
+	textout_centre_ex(ts_buffer, font, "Patriot", 600, 10, head_color, 0);
+	sprintf(s, "DMiss: %d", sum);
+	textout_centre_ex(ts_buffer, font, s, 600, 32, head_color, 0);
 
 	blit(ts_buffer, screen, 0, 0, 0, 20, TS_WIDTH, TS_HEIGHT-2);
 }
@@ -297,42 +310,57 @@ char_t s[20];
 }
 
 /*----------------------------------------------------------------------------+
- *	drawStats(s, type, y0)									 			      |
+ *	drawPatriotStats(pm, evts)								 			      |
  *																			  |
- *	Draws object state information based on the argument passed	  	 		  |
+ *	Draws status information about the patriots					 	 		  |
  *----------------------------------------------------------------------------+
  */
 
-void drawStats(stat s, uint8_t type, int32_t y0)
+void drawPatriotStats(uint8_t pm, uint8_t evts_tmp)
 {
-char_t string[20];
+char_t s[20], t[20];
+uint8_t mask1, mask2;
+int32_t i, y;
 
-	if (type == TARGET_STATS) {
-		sprintf(string, "Target Stats");
-	} else if(type == PATRIOT_STATS) {
-		sprintf(string, "Patriot Stats");
-	} else {
-		sprintf(string, "Prediction Stats");
+	mask1 = 1;		/* 0000 0001 */
+	mask2 = 16;		/* 0001 0000 */
+	textout_centre_ex(ss_buffer, font, "Patriot Stats", SS_WIDTH / 2,
+			200, head_color, 0);
+	y = 220;
+	for (i = 0; i < MAX_TARGETS; i++) {
+		if (isEvent(evts_tmp, mask2)) {	/* prediction ready */
+			sprintf(t, "Target lock");
+		} else if(isEvent(pm, mask1)) {	/* patriot fired */
+			sprintf(t, "Fired");
+		} else {						/* patriot not fired yet */
+			sprintf(t, "Ready");
+		}
+		sprintf(s, "P%d: %s", i, t);
+		textout_centre_ex(ss_buffer, font, s, SS_WIDTH / 2, y, txt_color, 0);
+		y += 20;
+		mask1 <<= 1;
+		mask2 <<= 1;
 	}
-	textout_centre_ex(ss_buffer, font, string, SS_WIDTH / 2, y0, head_color, 0);
-	sprintf(string, "X : %.1f", s.x);
-	y0 += 20;
-	textout_centre_ex(ss_buffer, font, string, 50, y0, txt_color, 0);
-	sprintf(string, "Y : %.1f", s.y);
-	textout_centre_ex(ss_buffer, font, string, 150, y0, txt_color, 0);
-	sprintf(string, "V : %.1f", s.v);
-	y0 += 15;
-	textout_centre_ex(ss_buffer, font, string, SS_WIDTH / 2, y0, txt_color, 0);
-	sprintf(string, "V_theta : %.1f", radToDeg(s.v_theta));
-	y0 += 15;
-	textout_centre_ex(ss_buffer, font, string, SS_WIDTH / 2, y0, txt_color, 0);
-	sprintf(string, "A : %.1f", s.a);
-	y0 += 15;
-	textout_centre_ex(ss_buffer, font, string, SS_WIDTH / 2, y0, txt_color, 0);
-	sprintf(string, "A_theta : %.1f", radToDeg(s.a_theta));
-	y0 += 15;
-	textout_centre_ex(ss_buffer, font, string, SS_WIDTH / 2, y0, txt_color, 0);
+}
 
+void drawInstructions()
+{
+	textout_centre_ex(screen, font, "Instructions", BOX_WIDTH + SS_WIDTH / 2,
+			320, head_color, 0);
+	textout_centre_ex(screen, font, "Spacebar:", BOX_WIDTH + SS_WIDTH / 2, 340, txt_color, 0);
+	textout_ex(screen, font, "Spawn a new target", BOX_WIDTH + 20, 355, txt_color, 0);
+	textout_centre_ex(screen, font, "R:", BOX_WIDTH + SS_WIDTH / 2, 375, txt_color, 0);
+	textout_ex(screen, font, "Reset the simulation", BOX_WIDTH + 20, 390, txt_color, 0);
+	textout_centre_ex(screen, font, "C:", BOX_WIDTH + SS_WIDTH / 2, 410, txt_color, 0);
+	textout_ex(screen, font, "Show real centroid", BOX_WIDTH + 20, 425, txt_color, 0);
+	textout_centre_ex(screen, font, "P:", BOX_WIDTH + SS_WIDTH / 2, 445, txt_color, 0);
+	textout_ex(screen, font, "Show sampled centroid", BOX_WIDTH + 20, 460, txt_color, 0);
+	textout_centre_ex(screen, font, "1, 2:", BOX_WIDTH + SS_WIDTH / 2, 480, txt_color, 0);
+	textout_ex(screen, font, "Pos Filter - / +", BOX_WIDTH + 20, 495, txt_color, 0);
+	textout_centre_ex(screen, font, "3, 4:", BOX_WIDTH + SS_WIDTH / 2, 515, txt_color, 0);
+	textout_ex(screen, font, "Speed Filter - / +", BOX_WIDTH + 20, 530, txt_color, 0);
+	textout_centre_ex(screen, font, "5, 6:", BOX_WIDTH + SS_WIDTH / 2, 550, txt_color, 0);
+	textout_ex(screen, font, "Acc Filter - / +", BOX_WIDTH + 20, 565, txt_color, 0);
 }
 
 /*----------------------------------------------------------------------------+

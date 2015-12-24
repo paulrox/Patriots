@@ -23,7 +23,7 @@ void drawTarget(int32_t x, int32_t y, float32_t angle, int32_t index);
 void drawPatriot(int32_t x, int32_t y, float32_t angle);
 void drawTaskStats(uint8_t *dmiss);
 void drawSimStats(sim_stats ss, float32_t p_f, float32_t v_f, float32_t a_f);
-void drawStats(stat s, uint8_t type, int32_t y0);
+void drawPatriotStats(uint8_t pm, uint8_t evts_tmp);
 void drawCentroid(int32_t x, int32_t y, uint8_t type);
 void drawCollision();
 

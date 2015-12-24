@@ -160,6 +160,7 @@ uint8_t i, tm_tmp, pm_tmp;
 		}
 		drawTaskStats(dmiss);
 		drawSimStats(sim, pos_f, v_f, a_f);
+		drawPatriotStats(p_mask, evts);
 		/* I have to convert the y coordinate of the physical
 		 * system to the allegro one */
 		if (isStarted) {
@@ -169,7 +170,6 @@ uint8_t i, tm_tmp, pm_tmp;
 						BOX_HEIGHT - (int32_t)(t[i].y / SCALE), t[i].v_theta, i);
 				tm_tmp <<= 1;
 			}
-			drawStats(t[0], TARGET_STATS, TARGET_STATS_Y0);
 			if (isEvent(evts, T_CENTROID)) {
 				drawCentroid(r[0].x, r[0].y, RADAR_CENTROID);
 			}
@@ -186,8 +186,6 @@ uint8_t i, tm_tmp, pm_tmp;
 				drawCentroid((int32_t)(pred[0].xf / SCALE), BOX_HEIGHT -
 						(int32_t)(pred[0].yf / SCALE), PRED_CENTROID);
 			}
-			drawStats(p[0], PATRIOT_STATS, PATRIOT_STATS_Y0);
-			drawStats(pred_s, PRED_STATS, PRED_STATS_Y0);
 			tm_tmp = pm_tmp = 1;
 			for (i = 0; i < MAX_TARGETS; i++) {
 				if (isEvent(t_mask, tm_tmp) && isEvent(p_mask, pm_tmp) &&
@@ -346,7 +344,7 @@ int32_t free;
 
 	while (!end) {
 		/* key 'A' spawns a target only if it's not on the screen */
-		if (key[KEY_A]) {
+		if (key[KEY_SPACE]) {
 			if (freeTargets){
 				/* search a free target structure */
 				free = findFreeTarget();
