@@ -176,9 +176,12 @@ void cartToPolar(float32_t x, float32_t y, float32_t *mod, float32_t *theta)
 float32_t frand(float32_t min, float32_t max)
 {
 float32_t r;
+struct timespec now;
 
-	/* takes the actual time as seed for rand() */
-	srand((int32_t)time(NULL));
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	/* takes the actual nsec as seed for rand() */
+	srand((int32_t)now.tv_nsec);
 	r = rand() / (float32_t)RAND_MAX;
 	return min + (max - min) * r;
 

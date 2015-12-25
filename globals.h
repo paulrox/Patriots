@@ -26,6 +26,7 @@
 
 #define TASK_NUM			12
 #define MAX_TARGETS			4
+#define MAX_PATRIOTS		4
 #define	DISPLAY_INDEX		0
 #define DISPLAY_PER			35
 #define DISPLAY_DL			DISPLAY_PER
@@ -87,6 +88,8 @@
 #define VECTOR_LEN			20
 #define CITY_COLLISION_Y	70 * SCALE
 #define radtofix(x)			ftofix(((-x) * 128) / PI)
+#define realToAllegX(x)		(int32_t)(x / SCALE)
+#define realToAllegY(y)		BOX_HEIGHT - (int32_t)(y / SCALE)
 
 /* PHYSICS MACROS */
 

@@ -117,7 +117,6 @@ void * display_task(void *arg)
 {
 task_des *td;
 sim_stats sim;
-stat pred_s;
 stat *t, *p;
 pred_stat *pred;
 coords *r;
@@ -146,11 +145,6 @@ uint8_t i, tm_tmp, pm_tmp;
 		pred = ps;
 		pthread_mutex_unlock(&r_mutex);
 
-		pred_s.x = pred[0].xf;
-		pred_s.y = pred[0].yf;
-		cartToPolar(pred[0].vxf, pred[0].vyf, &pred_s.v, &pred_s.v_theta);
-		cartToPolar(pred[0].axf, pred[0].ayf, &pred_s.a, &pred_s.a_theta);
-
 		pthread_mutex_lock(&sim_mutex);
 		sim = ss;
 		pthread_mutex_unlock(&sim_mutex);
@@ -163,31 +157,34 @@ uint8_t i, tm_tmp, pm_tmp;
 		drawPatriotStats(p_mask, evts);
 		/* I have to convert the y coordinate of the physical
 		 * system to the allegro one */
-		if (isStarted) {
+		if (isStarted) {	/* any target has spawn on the screen */
 			tm_tmp = 1;
 			for (i = 0; i < MAX_TARGETS; i++) {
-				if (isEvent(t_mask, tm_tmp)) drawTarget((int32_t)(t[i].x / SCALE),
-						BOX_HEIGHT - (int32_t)(t[i].y / SCALE), t[i].v_theta, i);
+				if (isEvent(t_mask, tm_tmp)) {
+					drawTarget(realToAllegX(t[i].x), realToAllegY(t[i].y),
+							t[i].v_theta, i);
+					if (isEvent(evts, T_CENTROID)) {
+						drawCentroid(r[i].x, r[i].y, RADAR_CENTROID);
+					}
+				}
 				tm_tmp <<= 1;
 			}
-			if (isEvent(evts, T_CENTROID)) {
-				drawCentroid(r[0].x, r[0].y, RADAR_CENTROID);
-			}
 		}
-		if (isFired){
+		if (isFired){	/* any patriot has been fired */
 			pm_tmp = 1;
-			for (i = 0; i < MAX_TARGETS; i++) {
-				if (isEvent(p_mask, pm_tmp))
-					drawPatriot((int32_t)(p[i].x / SCALE), BOX_HEIGHT -
-						(int32_t)(p[i].y / SCALE), p[i].v_theta);
+			for (i = 0; i < MAX_PATRIOTS; i++) {
+				if (isEvent(p_mask, pm_tmp)) {
+					drawPatriot(realToAllegX(p[i].x), realToAllegY(p[i].y),
+							p[i].v_theta);
+					if (isEvent(evts, P_CENTROID)) {
+						drawCentroid(realToAllegX(pred[i].xf),
+								realToAllegY(pred[i].yf), PRED_CENTROID);
+					}
+				}
 				pm_tmp <<= 1;
 			}
-			if (isEvent(evts, P_CENTROID)) {
-				drawCentroid((int32_t)(pred[0].xf / SCALE), BOX_HEIGHT -
-						(int32_t)(pred[0].yf / SCALE), PRED_CENTROID);
-			}
 			tm_tmp = pm_tmp = 1;
-			for (i = 0; i < MAX_TARGETS; i++) {
+			for (i = 0; i < MAX_PATRIOTS; i++) {
 				if (isEvent(t_mask, tm_tmp) && isEvent(p_mask, pm_tmp) &&
 						checkCollision(t[i], p[i])) {
 					setEvent(p_mask, pm_tmp << 4);
@@ -409,7 +406,6 @@ task_des *td;
 coords *r;
 stat tmp;
 pred_stat *s;
-float32_t dx, dy, theta;
 int32_t i;
 uint8_t mask;
 
@@ -418,30 +414,34 @@ uint8_t mask;
 	set_period(td);
 
 	while (!isEvent(evts, END)) {
+		/* copy the actual radar and prediction arrays
+		 * to a temporary buffer */
 		pthread_mutex_lock(&r_mutex);
 		r = r_coords;
 		s = ps;
 		pthread_mutex_unlock(&r_mutex);
 
-		mask = 1;
+		mask = 1;	/* 0000 0001 */
 		/* if a target is inside the radar area for at least MIN_RAD_CYCLE
 		 *  periods, fire the patriot */
 		for (i = 0; i < MAX_TARGETS; i++) {
-			if (!isEvent(p_mask, mask) && engaged_cycle[i] > MIN_RAD_CYCLE) {
+			if (!isEvent(p_mask, mask) && (engaged_cycle[i] > MIN_RAD_CYCLE)) {
 				/* Compute the predicted position according to the actual
 				 *  centroid coordinates */
-				filterStats(r[i].x*SCALE, BOX_HEIGHT * SCALE - r[i].y*SCALE,
-						(float32_t)(td->period) / 1000, &s[i]);
+				filterStats(r[i].x * SCALE, BOX_HEIGHT * SCALE - r[i].y *
+						SCALE, (float32_t)(td->period) / 1000, &s[i]);
 				/* create the patriot task */
 				create_task(patriot_task, PATRIOT_PER, PATRIOT_DL, PATRIOT_PRIO,
 					PATRIOT_INDEX + i);
-				setEvent(p_mask, mask);
-			} else if (isEvent(p_mask, mask)){
-				filterStats(r[i].x*SCALE, BOX_HEIGHT * SCALE - r[i].y*SCALE,
-						(float32_t)(td->period) / 1000, &s[i]);
+				setEvent(p_mask, mask); /* patriot 'i' fired */
+			} else if (isEvent(p_mask, mask)){ /* patriot already fired */
+				filterStats(r[i].x * SCALE, BOX_HEIGHT * SCALE - r[i].y *
+						SCALE, (float32_t)(td->period) / 1000, &s[i]);
 				pthread_mutex_lock(&p_mutex);
 				tmp = p_stat[i];
 				pthread_mutex_unlock(&p_mutex);
+				/* if the patriot is moving at constant speed and
+				 * and the prediction isn't already been computed */
 				if (tmp.v >= PATRIOT_V_MAX && !isEvent(evts, mask << 4)) {
 					computeIntercept(s[i], tmp, i);
 					setEvent(evts, mask << 4); /* prediction ready */
@@ -472,7 +472,7 @@ task_des *td;
 float32_t x, y, p_x, p_y, p_vx, p_vy, p_ax, p_ay, theta, dx, dy, dt;
 stat patr_tmp;
 pred_stat pred_tmp;
-uint8_t mask;
+uint8_t mask, mask_l;
 int32_t i, index;
 
 	td = (task_des*)arg;
@@ -480,11 +480,11 @@ int32_t i, index;
 	set_period(td);
 
 	dt = TSCALE*(float32_t)td->period/1000;
-	index = td->index - PATRIOT_INDEX;
-	mask = 1;
-	for (i = 0; i < index; i++) mask <<= 1;
-
-	while (!isEvent(evts, END) && !isEvent(t_mask, mask << 4) &&
+	index = td->index - PATRIOT_INDEX;	/* get the index */
+	mask = 1;	/* 0000 0001 */
+	for (i = 0; i < index; i++) mask <<= 1; /* get the right bitmask */
+	mask_l = mask << 4;
+	while (!isEvent(evts, END) && !isEvent(t_mask, mask_l) &&
 			isEvent(t_mask, mask) > 0) {
 
 		/* Get the prediction data */
@@ -507,7 +507,7 @@ int32_t i, index;
 		dx = x - p_x;
 		dy = y - p_y;
 
-		if (!isEvent(evts, mask << 4)) {
+		if (!isEvent(evts, mask_l)) {
 			theta = atan2f(dy, dx);
 		} else {
 			theta = coll_theta[index];
@@ -630,7 +630,7 @@ float32_t xf, yf, vx, vy, ax, ay, vxf, vyf, axf, ayf;
 
 static void computeIntercept(pred_stat t, stat p, int32_t index)
 {
-float32_t xt, yt, xp, yp, dist, dt, theta, theta_i, i;
+float32_t xt, yt, xp, yp, dist, dt, theta_i, i;
 
 	theta_i = p.v_theta;
 
@@ -648,9 +648,6 @@ float32_t xt, yt, xp, yp, dist, dt, theta, theta_i, i;
 			}
 		}
 	}
-	//printf("x_intercept = %.2f\n", x_coll);
-	//printf("tan_a = %.2f\n", radToDeg(atan(tan_a)));
-	//printf("theta_intercept = %.2f\n", radToDeg(coll_theta));
 }
 
 
@@ -689,7 +686,6 @@ static void cleanTargetStats(int32_t index)
 
 static void cleanPatriotStats(int32_t index)
 {
-
 	p_stat[index].v = 100;
 	p_stat[index].v_theta = 0;
 	p_stat[index].x = PATRIOT_X0;
