@@ -105,7 +105,10 @@
 /* target acceleration vector angle */
 #define TARGET_ACC_DEG		(float32_t)-((0.5) * PI)
 /* patriot initial x (real) coordinate */
-#define PATRIOT_X0			400 * SCALE
+#define PATRIOT_0_X0		370 * SCALE
+#define PATRIOT_1_X0		390 * SCALE
+#define PATRIOT_2_X0		410 * SCALE
+#define PATRIOT_3_X0		430 * SCALE
 /* patriot initial y (real) coordinate */
 #define PATRIOT_Y0			100 * SCALE
 #define PATRIOT_V_MAX		1700

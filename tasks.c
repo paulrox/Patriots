@@ -42,7 +42,7 @@ sim_stats ss;
 /* LOCAL FUNCTIONS DECLARATION */
 static int32_t findFreeTarget();
 static void filterStats(int32_t x, int32_t y, float32_t period, pred_stat *ps);
-static void computeIntercept(pred_stat t, stat p, int32_t index);
+static uint8_t computeIntercept(pred_stat t, stat p, int32_t index);
 static void cleanTargetStats(int32_t index);
 static void cleanPatriotStats(int32_t index);
 static void cleanSimStats();
@@ -194,7 +194,6 @@ uint8_t i, tm_tmp, pm_tmp;
 					ss.t_hit++;
 					ss.t_hitratio = (float32_t)ss.t_hit / ss.t_fired;
 					pthread_mutex_unlock(&sim_mutex);
-					drawCollision();
 				}
 				tm_tmp <<= 1;
 				pm_tmp <<= 1;
@@ -232,7 +231,6 @@ uint8_t i, evt_mask, tmp_mask;
 	index = td->index - TARGET_INDEX;
 	evt_mask = 1;
 	for (i = 0; i < index; i++) evt_mask <<= 1;
-	printf("index: %d\n", index);
 
 	/* compute the initial speed vector angle in order
 	 * to hit the middle of the city */
@@ -361,6 +359,7 @@ int32_t free;
 		}
 		/* key 'R' reset the simulation */
 		if (key[KEY_R] && isStarted) {
+			cleanSimStats();
 			t_mask = 0;
 			p_mask = 0;
 		}
@@ -407,7 +406,7 @@ coords *r;
 stat tmp;
 pred_stat *s;
 int32_t i;
-uint8_t mask;
+uint8_t mask, mask_l;
 
 	td = (task_des*)arg;
 
@@ -425,6 +424,7 @@ uint8_t mask;
 		/* if a target is inside the radar area for at least MIN_RAD_CYCLE
 		 *  periods, fire the patriot */
 		for (i = 0; i < MAX_TARGETS; i++) {
+			mask_l = mask << 4;
 			if (!isEvent(p_mask, mask) && (engaged_cycle[i] > MIN_RAD_CYCLE)) {
 				/* Compute the predicted position according to the actual
 				 *  centroid coordinates */
@@ -442,9 +442,10 @@ uint8_t mask;
 				pthread_mutex_unlock(&p_mutex);
 				/* if the patriot is moving at constant speed and
 				 * and the prediction isn't already been computed */
-				if (tmp.v >= PATRIOT_V_MAX && !isEvent(evts, mask << 4)) {
-					computeIntercept(s[i], tmp, i);
-					setEvent(evts, mask << 4); /* prediction ready */
+				if (tmp.v >= PATRIOT_V_MAX && !isEvent(evts, mask_l)) {
+					if (computeIntercept(s[i], tmp, i)) {
+						setEvent(evts, mask_l); /* prediction ready */
+					}
 				}
 			}
 			pthread_mutex_lock(&r_mutex);
@@ -507,7 +508,7 @@ int32_t i, index;
 		dx = x - p_x;
 		dy = y - p_y;
 
-		if (!isEvent(evts, mask_l)) {
+		if (!isEvent(evts, mask_l)) {	/* prediction not ready yet */
 			theta = atan2f(dy, dx);
 		} else {
 			theta = coll_theta[index];
@@ -624,11 +625,11 @@ float32_t xf, yf, vx, vy, ax, ay, vxf, vyf, axf, ayf;
 /*----------------------------------------------------------------------------+
  *	computeIntercept(s, theta)							 					  |
  *																			  |
- *																			  |
+ *	Computes the intercept angle between a target and a Patriot missiles.	  |
  *----------------------------------------------------------------------------+
  */
 
-static void computeIntercept(pred_stat t, stat p, int32_t index)
+static uint8_t computeIntercept(pred_stat t, stat p, int32_t index)
 {
 float32_t xt, yt, xp, yp, dist, dt, theta_i, i;
 
@@ -643,11 +644,11 @@ float32_t xt, yt, xp, yp, dist, dt, theta_i, i;
 			dist = sqrt((xt - xp) * (xt - xp) + (yt - yp) * (yt - yp));
 			if (dist <= COLL_DIST / 2) {
 				coll_theta[index] = i;
-				printf("t_intercept = %.2f\n", dt);
-				return;
+				return 1;
 			}
 		}
 	}
+	return 0;
 }
 
 
@@ -687,8 +688,11 @@ static void cleanTargetStats(int32_t index)
 static void cleanPatriotStats(int32_t index)
 {
 	p_stat[index].v = 100;
-	p_stat[index].v_theta = 0;
-	p_stat[index].x = PATRIOT_X0;
+	p_stat[index].v_theta = PI / 2;
+	if (index == 0) p_stat[index].x = PATRIOT_0_X0;
+	if (index == 1) p_stat[index].x = PATRIOT_1_X0;
+	if (index == 2) p_stat[index].x = PATRIOT_2_X0;
+	if (index == 3) p_stat[index].x = PATRIOT_3_X0;
 	p_stat[index].y = PATRIOT_Y0;
 	p_stat[index].a = PATRIOT_ACC;
 	p_stat[index].a_theta = PATRIOT_A_THETA;
@@ -704,11 +708,11 @@ static void cleanPatriotStats(int32_t index)
 static void cleanSimStats()
 {
 	ss.t_fired = ss.t_missed = ss.t_hit = ss.t_hitratio = 0;
-
+	/* reset filters to default values */
 	pos_f = P1;
 	v_f = P2;
 	a_f = P3;
-
+	/* clear the centroids events */
 	clearEvent(evts, T_CENTROID);
 	clearEvent(evts, P_CENTROID);
 }

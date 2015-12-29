@@ -1,8 +1,11 @@
 /*
- * events.c
+ * EVENTS MANAGEMENT SOURCE CODE
+ *
+ * This file contains the global bitmasks used in the application
+ * and the definition of utility functions for events management.
  *
  *  Created on: 22/dic/2015
- *      Author: paolo
+ *      Author: Paolo Sassi
  */
 
 #include "events.h"

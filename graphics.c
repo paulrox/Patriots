@@ -72,7 +72,6 @@ char t_path[13];
 		sprintf(t_path, "img/target_%d.bmp", i);
 		targets[i] = load_bitmap(t_path, NULL);
 	}
-
 	patriot = load_bitmap(PATRIOT_PATH, NULL);
 
 	/* clear screen buffer to black */
@@ -172,7 +171,7 @@ void updateStats()
 }
 
 /*----------------------------------------------------------------------------+
- *	scanArea(xc, yc)							 			        		  |
+ *	scanArea(xc, yc, index)						 			        		  |
  *																			  |
  *	Copy a portion of the screen to a buffer and if the target is detected 	  |
  *	computes its centroid.				    					  			  |
@@ -189,7 +188,7 @@ int32_t x, y, pixel_num, target_x, target_y;
 	/* copy a rectangular region near the radar to the radar buffer */
 	blit(screen, radar_buffer, RAD_AREA_X, RAD_AREA_Y, 0, 0,
 			RAD_RANGE_X, RAD_RANGE_Y);
-	/* scan the radar buffer searching the target */
+	/* scan the radar buffer looking for the target */
 	for (x = 0; x <= RAD_RANGE_X; x++) {
 		for (y = 0; y <= RAD_RANGE_Y - RAD_RANGE_MIN; y++) {
 			if (getpixel(radar_buffer, x, y) == t_colors[index]) {
@@ -232,8 +231,8 @@ float32_t dist;
 /*----------------------------------------------------------------------------+
  *	drawTaskStats(dmiss)									 				  |
  *																			  |
- *	Draw statistics about the tasks into a buffer 							  |
- *	and then copy them on the screen	  	 								  |
+ *	Draw statistics about the tasks into a buffer and then copy them		  |
+ *	on the screen	  	 													  |
  *----------------------------------------------------------------------------+
  */
 
@@ -256,6 +255,7 @@ int32_t i, sum;
 	textout_centre_ex(ts_buffer, font, "ECS", 400, 10, head_color, 0);
 	sprintf(s, "DMiss: %d", dmiss[3]);
 	textout_centre_ex(ts_buffer, font, s, 400, 32, head_color, 0);
+	/* we show the sum of all the target tasks dmisses */
 	for (i = TARGET_INDEX; i < TARGET_INDEX + MAX_TARGETS; i++) {
 		sum += dmiss[i];
 	}
@@ -263,6 +263,7 @@ int32_t i, sum;
 	sprintf(s, "DMiss: %d", sum);
 	textout_centre_ex(ts_buffer, font, s, 500, 32, head_color, 0);
 	sum = 0;
+	/* we show the sum of all the patriot tasks dmisses */
 	for (i = PATRIOT_INDEX; i < PATRIOT_INDEX + MAX_TARGETS; i++) {
 		sum += dmiss[i];
 	}
@@ -347,37 +348,38 @@ void drawInstructions()
 {
 	textout_centre_ex(screen, font, "Instructions", BOX_WIDTH + SS_WIDTH / 2,
 			320, head_color, 0);
-	textout_centre_ex(screen, font, "Spacebar:", BOX_WIDTH + SS_WIDTH / 2, 340, txt_color, 0);
-	textout_ex(screen, font, "Spawn a new target", BOX_WIDTH + 20, 355, txt_color, 0);
-	textout_centre_ex(screen, font, "R:", BOX_WIDTH + SS_WIDTH / 2, 375, txt_color, 0);
-	textout_ex(screen, font, "Reset the simulation", BOX_WIDTH + 20, 390, txt_color, 0);
-	textout_centre_ex(screen, font, "C:", BOX_WIDTH + SS_WIDTH / 2, 410, txt_color, 0);
-	textout_ex(screen, font, "Show real centroid", BOX_WIDTH + 20, 425, txt_color, 0);
-	textout_centre_ex(screen, font, "P:", BOX_WIDTH + SS_WIDTH / 2, 445, txt_color, 0);
-	textout_ex(screen, font, "Show sampled centroid", BOX_WIDTH + 20, 460, txt_color, 0);
-	textout_centre_ex(screen, font, "1, 2:", BOX_WIDTH + SS_WIDTH / 2, 480, txt_color, 0);
-	textout_ex(screen, font, "Pos Filter - / +", BOX_WIDTH + 20, 495, txt_color, 0);
-	textout_centre_ex(screen, font, "3, 4:", BOX_WIDTH + SS_WIDTH / 2, 515, txt_color, 0);
-	textout_ex(screen, font, "Speed Filter - / +", BOX_WIDTH + 20, 530, txt_color, 0);
-	textout_centre_ex(screen, font, "5, 6:", BOX_WIDTH + SS_WIDTH / 2, 550, txt_color, 0);
-	textout_ex(screen, font, "Acc Filter - / +", BOX_WIDTH + 20, 565, txt_color, 0);
+	textout_centre_ex(screen, font, "Spacebar:", BOX_WIDTH + SS_WIDTH / 2, 340,
+			txt_color, 0);
+	textout_ex(screen, font, "Spawn a new target", BOX_WIDTH + 20, 355,
+			txt_color, 0);
+	textout_centre_ex(screen, font, "R:", BOX_WIDTH + SS_WIDTH / 2, 375,
+			txt_color, 0);
+	textout_ex(screen, font, "Reset the simulation", BOX_WIDTH + 20, 390,
+			txt_color, 0);
+	textout_centre_ex(screen, font, "C:", BOX_WIDTH + SS_WIDTH / 2, 410,
+			txt_color, 0);
+	textout_ex(screen, font, "Show real centroid", BOX_WIDTH + 20, 425,
+			txt_color, 0);
+	textout_centre_ex(screen, font, "P:", BOX_WIDTH + SS_WIDTH / 2, 445,
+			txt_color, 0);
+	textout_ex(screen, font, "Show sampled centroid", BOX_WIDTH + 20, 460,
+			txt_color, 0);
+	textout_centre_ex(screen, font, "1, 2:", BOX_WIDTH + SS_WIDTH / 2, 480,
+			txt_color, 0);
+	textout_ex(screen, font, "Pos Filter - / +", BOX_WIDTH + 20, 495,
+			txt_color, 0);
+	textout_centre_ex(screen, font, "3, 4:", BOX_WIDTH + SS_WIDTH / 2, 515,
+			txt_color, 0);
+	textout_ex(screen, font, "Speed Filter - / +", BOX_WIDTH + 20, 530,
+			txt_color, 0);
+	textout_centre_ex(screen, font, "5, 6:", BOX_WIDTH + SS_WIDTH / 2, 550,
+			txt_color, 0);
+	textout_ex(screen, font, "Acc Filter - / +", BOX_WIDTH + 20, 565,
+			txt_color, 0);
 }
 
 /*----------------------------------------------------------------------------+
- *	drawCollision()								 			        		  |
- *																			  |
- *	Draws a visual output about the objects collision	  	 			  	  |
- *----------------------------------------------------------------------------+
- */
-
-void drawCollision()
-{
-	textout_centre_ex(ss_buffer, font, "Target destroyed!",
-			SS_WIDTH / 2, 510, txt_color, 0);
-}
-
-/*----------------------------------------------------------------------------+
- *	drawTarget()								 			        		  |
+ *	drawTarget(x, y, agle, index)								       		  |
  *																			  |
  *	Draws the rotated sprite of the enemy target into a buffer  	 		  |
  *----------------------------------------------------------------------------+
@@ -390,7 +392,7 @@ void drawTarget(int32_t x, int32_t y, float32_t angle, int32_t index)
 }
 
 /*----------------------------------------------------------------------------+
- *	drawPatriot()								 			        		  |
+ *	drawPatriot(x, y, angle)								        		  |
  *																			  |
  *	Draws the rotated sprite of the patriot target into a buffer  	 		  |
  *----------------------------------------------------------------------------+
@@ -402,7 +404,7 @@ void drawPatriot(int32_t x, int32_t y, float32_t angle)
 }
 
 /*----------------------------------------------------------------------------+
- *	drawCentroid()								 			        		  |
+ *	drawCentroid(x, y, type)					 			        		  |
  *																			  |
  *	Draws a small circle in the specified coordinates	 				      |
  *----------------------------------------------------------------------------+
