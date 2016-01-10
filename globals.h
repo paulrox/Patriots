@@ -28,21 +28,21 @@
 #define MAX_TARGETS			4
 #define MAX_PATRIOTS		4
 #define	DISPLAY_INDEX		0
-#define DISPLAY_PER			35
+#define DISPLAY_PER			42
 #define DISPLAY_DL			DISPLAY_PER
-#define	DISPLAY_PRIO		29
+#define	DISPLAY_PRIO		28
 #define	RADAR_INDEX			1
-#define	RADAR_PER			70
+#define	RADAR_PER			110
 #define	RADAR_DL			RADAR_PER
-#define	RADAR_PRIO			32
+#define	RADAR_PRIO			31
 #define	KEYBOARD_INDEX		2
-#define	KEYBOARD_PER		100
+#define	KEYBOARD_PER		150
 #define	KEYBOARD_DL			KEYBOARD_PER
-#define	KEYBOARD_PRIO		33
+#define	KEYBOARD_PRIO		32
 #define ECS_INDEX			3
-#define ECS_PER				35
+#define ECS_PER				45
 #define ECS_DL				ECS_PER
-#define ECS_PRIO			28
+#define ECS_PRIO			29
 #define	TARGET_INDEX		4
 #define	TARGET_PER			50
 #define	TARGET_DL			TARGET_PER
@@ -50,7 +50,7 @@
 #define	PATRIOT_INDEX		8
 #define	PATRIOT_PER			50
 #define	PATRIOT_DL			PATRIOT_PER
-#define	PATRIOT_PRIO		31
+#define	PATRIOT_PRIO		30
 
 /* GRAPHICS MACROS */
 
@@ -121,7 +121,9 @@
 #define FILTER_STEP			0.01
 #define FILTER_MAX			0.99
 #define FILTER_MIN			0.00
-#define COLL_DIST			20 * SCALE
+#define COLL_DIST			18 * SCALE
+#define T_MAX				25
+#define T_STEP				0.05
 
 #define radToDeg(x)			x * (180 / PI)
 #define degToRad(x)			x * (PI / 180)
@@ -182,14 +184,14 @@ typedef struct _stat {
 /* Data structure used to store the information
  * to compute predictions
  */
-typedef struct _pred_stat {
+typedef struct _filter_stat {
 	float32_t xf;
 	float32_t yf;
 	float32_t vxf;
 	float32_t vyf;
 	float32_t axf;
 	float32_t ayf;
-} pred_stat;
+} filter_stat;
 
 /* Simulation statistics */
 typedef struct _sim_stats {

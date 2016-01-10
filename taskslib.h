@@ -1,24 +1,15 @@
 /*
- * patriots_lib.h
+ * pTASK LIBRARY HEADER FILE
  *
  *  Created on: 30/ott/2015
- *      Author: paolo
+ *      Author: Paolo Sassi
  */
 
 #ifndef TASKSLIB_H_
 #define TASKSLIB_H_
 
-/*	+---------------------------------------------------------------------------------+
- *	|																				  |
- *	|							LIST OF INCLUDED FILES								  |
- *	|																				  |
- *	+---------------------------------------------------------------------------------+
- */
-
-
 #include <stdlib.h>
 #include <time.h>
-
 #include "globals.h"
 
 /* Task management data structure */
@@ -41,7 +32,7 @@ void set_period(task_des *td);
 void wfp(task_des *td);
 void check_deadline(task_des *td);
 
-/* Time related funtions */
+/* Time related functions */
 void time_copy(struct timespec *td, struct timespec ts);
 void time_add_ms(struct timespec *t, int ms);
 int8_t time_cmp(struct timespec t1, struct timespec t2);

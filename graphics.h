@@ -2,7 +2,7 @@
  * GRAPHICS MODULE HEADER FILE
  *
  *  Created on: 03/nov/2015
- *      Author: paolo
+ *      Author: Paolo Sassi
  */
 
 #ifndef GRAPHICS_H_

@@ -10,21 +10,22 @@
  */
 
 #include "graphics.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <allegro.h>
-
 #include "events.h"
 #include "globals.h"
 
+/* MODULE GLOBAL VARIABLES */
+
 int32_t line_color, txt_color, head_color, p_color, tc_color, tp_color;
 int32_t t_colors[MAX_TARGETS];
-
 BITMAP *city, *radar, *bkg, *box_buffer, *ss_buffer, *ts_buffer,
 	*radar_buffer, *patriot;
 BITMAP	*targets[MAX_TARGETS];
+
+/* LOCAL FUNCTIONS DECLARATIONS */
 
 static void drawInstructions();
 
@@ -270,7 +271,6 @@ int32_t i, sum;
 	textout_centre_ex(ts_buffer, font, "Patriot", 600, 10, head_color, 0);
 	sprintf(s, "DMiss: %d", sum);
 	textout_centre_ex(ts_buffer, font, s, 600, 32, head_color, 0);
-
 	blit(ts_buffer, screen, 0, 0, 0, 20, TS_WIDTH, TS_HEIGHT-2);
 }
 
@@ -307,7 +307,6 @@ char_t s[20];
 	textout_centre_ex(ss_buffer, font, s, SS_WIDTH / 2, 160, txt_color, 0);
 	sprintf(s, "Acc. Filter: %.2f", a_f);
 	textout_centre_ex(ss_buffer, font, s, SS_WIDTH / 2, 180, txt_color, 0);
-
 }
 
 /*----------------------------------------------------------------------------+
@@ -379,7 +378,7 @@ void drawInstructions()
 }
 
 /*----------------------------------------------------------------------------+
- *	drawTarget(x, y, agle, index)								       		  |
+ *	drawTarget(x, y, angle, index)								       		  |
  *																			  |
  *	Draws the rotated sprite of the enemy target into a buffer  	 		  |
  *----------------------------------------------------------------------------+
@@ -400,7 +399,8 @@ void drawTarget(int32_t x, int32_t y, float32_t angle, int32_t index)
 
 void drawPatriot(int32_t x, int32_t y, float32_t angle)
 {
-	rotate_sprite(box_buffer, patriot, x - PATRIOT_WIDTH / 2, y - PATRIOT_HEIGHT / 2, radtofix(angle));
+	rotate_sprite(box_buffer, patriot, x - PATRIOT_WIDTH / 2,
+			y - PATRIOT_HEIGHT / 2, radtofix(angle));
 }
 
 /*----------------------------------------------------------------------------+

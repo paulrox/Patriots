@@ -5,7 +5,7 @@
  * the events bitmasks
  *
  *  Created on: 22/dic/2015
- *      Author: paolo
+ *      Author: Paolo Sassi
  */
 
 #ifndef EVENTS_H_

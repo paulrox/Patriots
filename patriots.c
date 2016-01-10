@@ -26,7 +26,7 @@ int main()
 	/* create the initial task set */
 	create_task(display_task, DISPLAY_PER, DISPLAY_DL, DISPLAY_PRIO, DISPLAY_INDEX);
 	create_task(radar_task, RADAR_PER, RADAR_DL, RADAR_PRIO, RADAR_INDEX);
-	create_task(parse_keyboard, KEYBOARD_PER, KEYBOARD_DL, KEYBOARD_PRIO, KEYBOARD_INDEX);
+	create_task(keyboard_task, KEYBOARD_PER, KEYBOARD_DL, KEYBOARD_PRIO, KEYBOARD_INDEX);
 	create_task(ecs_task, ECS_PER, ECS_DL, ECS_PRIO, ECS_INDEX);
 
 	/* wait until application end */
