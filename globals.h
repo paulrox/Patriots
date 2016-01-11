@@ -30,27 +30,27 @@
 #define	DISPLAY_INDEX		0
 #define DISPLAY_PER			42
 #define DISPLAY_DL			DISPLAY_PER
-#define	DISPLAY_PRIO		28
+#define	DISPLAY_PRIO		99
 #define	RADAR_INDEX			1
 #define	RADAR_PER			110
 #define	RADAR_DL			RADAR_PER
-#define	RADAR_PRIO			31
+#define	RADAR_PRIO			96
 #define	KEYBOARD_INDEX		2
 #define	KEYBOARD_PER		150
 #define	KEYBOARD_DL			KEYBOARD_PER
-#define	KEYBOARD_PRIO		32
+#define	KEYBOARD_PRIO		95
 #define ECS_INDEX			3
 #define ECS_PER				45
 #define ECS_DL				ECS_PER
-#define ECS_PRIO			29
+#define ECS_PRIO			98
 #define	TARGET_INDEX		4
 #define	TARGET_PER			50
 #define	TARGET_DL			TARGET_PER
-#define	TARGET_PRIO			30
+#define	TARGET_PRIO			97
 #define	PATRIOT_INDEX		8
 #define	PATRIOT_PER			50
 #define	PATRIOT_DL			PATRIOT_PER
-#define	PATRIOT_PRIO		30
+#define	PATRIOT_PRIO		97
 
 /* GRAPHICS MACROS */
 
