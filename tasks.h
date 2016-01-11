@@ -12,10 +12,6 @@
 
 #include "globals.h"
 
-/* GLOBALS VARIABLES */
-
-extern uint8_t end;	/* used to notify the end of the application */
-
 /* TASK DECLARATIONS */
 
 void *display_task(void *arg);
@@ -28,6 +24,7 @@ void *ecs_task(void *arg);
 /* GLOBAL FUNCTIONS */
 
 void init();
+void waitEnd();
 void endProgram();
 
 

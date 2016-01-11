@@ -27,7 +27,7 @@ typedef struct _task_des {
 extern task_des task_set[TASK_NUM];
 
 /* Task management functions */
-uint8_t create_task(void *func, uint32_t period, uint32_t deadline, uint32_t prio, uint32_t index);
+void create_task(void *func, uint32_t period, uint32_t deadline, uint32_t prio, uint32_t index);
 void set_period(task_des *td);
 void wfp(task_des *td);
 void check_deadline(task_des *td);

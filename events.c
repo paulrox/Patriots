@@ -11,21 +11,38 @@
 #include "events.h"
 #include "globals.h"
 
-uint8_t	t_mask;
-uint8_t	p_mask;
-uint8_t evts;
+/* Global events bitmasks */
+
+uint8_t	t_mask;	/* target events bitmask */
+uint8_t	p_mask;	/* patriot events bitmask */
+uint8_t evts;	/* general events bitmask */
+
+/* Events utility functions */
+
+/*----------------------------------------------------------------------------------+
+ *	clearEvents()																	|
+ *																					|
+ *	Clears all the event bitmasks													|
+ *----------------------------------------------------------------------------------+
+ */
 
 void clearEvents() {
 	t_mask = p_mask = evts = 0;
 }
 
+/*----------------------------------------------------------------------------------+
+ *	clearTargetEvents(index)														|
+ *																					|
+ *	Clears the event bits associated to the target 'index'							|
+ *----------------------------------------------------------------------------------+
+ */
+
 void clearTargetEvents(int32_t index) {
 uint8_t mask;
 int32_t i;
 
-	mask = 1;
+	mask = 1;	/* 0000 0001 */
 	for (i = 0; i < index; i++) mask <<= 1;
-
 	clearEvent(t_mask, mask);
 	clearEvent(p_mask, mask);
 	mask <<= 4;

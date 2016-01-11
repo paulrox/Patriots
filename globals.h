@@ -124,6 +124,8 @@
 #define COLL_DIST			18 * SCALE
 #define T_MAX				25
 #define T_STEP				0.05
+#define THETA_DEV			35  /* angle deviation for intercept */
+#define THETA_STEP			1	/* angle increase step */
 
 #define radToDeg(x)			x * (180 / PI)
 #define degToRad(x)			x * (PI / 180)

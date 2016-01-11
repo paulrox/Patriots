@@ -8,17 +8,15 @@
  *      Author: Paolo Sassi
  */
 
-#include "globals.h"		// application global constants
-#include "taskslib.h"		// task management functions
-#include "graphics.h"		// graphics functions
-#include "tasks.h"			// task code and task-related functions
-#include "events.h"
+#include "globals.h"		/* application global constants */
+#include "taskslib.h"		/* task management functions */
+#include "graphics.h"		/* graphics functions */
+#include "tasks.h"			/* task code and task-related functions */
 
 
 
 int main()
 {
-
 	init();
 
 	drawGUI();
@@ -30,10 +28,9 @@ int main()
 	create_task(ecs_task, ECS_PER, ECS_DL, ECS_PRIO, ECS_INDEX);
 
 	/* wait until application end */
-	while(!isEvent(evts, END));
+	waitEnd();
 
 	endProgram();
 
 	return 0;
-
 }

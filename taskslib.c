@@ -28,7 +28,7 @@ task_des task_set[TASK_NUM];
  *----------------------------------------------------------------------------------+
  */
 
-uint8_t create_task(void *func, uint32_t period, uint32_t deadline, uint32_t prio, uint32_t index)
+void create_task(void *func, uint32_t period, uint32_t deadline, uint32_t prio, uint32_t index)
 {
 uint32_t err;
 pthread_attr_t attr;
@@ -46,10 +46,11 @@ struct sched_param par;
 	par.sched_priority = prio;
 	pthread_attr_setschedparam(&attr, &par);
 	err = pthread_create(&task_set[index].tid, &attr, func, &task_set[index]);
-
 	pthread_attr_destroy(&attr);
-
-	return err;
+	if (err < 0) {
+		printf("Unable to create task %d\n", index);
+		exit(1);
+	}
 }
 
 /*----------------------------------------------------------------------------------+
@@ -131,7 +132,6 @@ void time_add_ms(struct timespec *t, int ms)
 		t->tv_nsec -= 1000000000;
 		t->tv_sec += 1;
 	}
-
 }
 
 /*----------------------------------------------------------------------------------+

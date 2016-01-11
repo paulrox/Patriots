@@ -14,10 +14,9 @@
 #include "globals.h"
 
 /* Global Events */
-#define END			0x01
+#define END			0x01	/* Application end */
 #define T_CENTROID	0x02
 #define P_CENTROID	0x04
-#define PRED_READY	0x08
 #define PRED1_READY	0x10
 #define PRED2_READY	0x20
 #define PRED3_READY	0x40
@@ -28,24 +27,24 @@
 #define T2START		0x02
 #define T3START		0x04
 #define T4START		0x08
-#define STARTED		0x0F
+#define STARTED		0x0F	/* any target started */
 #define T1MISS		0x10
 #define T2MISS		0x20
 #define T3MISS		0x40
 #define T4MISS		0x80
-#define MISSED		0xF0
+#define MISSED		0xF0	/* any target missed */
 
 /* Patriot Events */
 #define P1FIRE		0x01
 #define P2FIRE		0x02
 #define P3FIRE		0x04
 #define P4FIRE		0x08
-#define	FIRED		0x0F
+#define	FIRED		0x0F	/* any patriot fired */
 #define P1HIT		0x10
 #define P2HIT		0x20
 #define P3HIT		0x40
 #define P4HIT		0x80
-#define HIT			0xF0
+#define HIT			0xF0	/* any target hit */
 
 /* Bitmasks macros */
 #define setEvent(mask, event)	(mask |= event)
